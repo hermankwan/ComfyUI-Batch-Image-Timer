@@ -12,8 +12,10 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 * 📊 **Live Progress Counter**: Displays real-time progress `[ Current / Total ]` and execution status (`[ STARTING... ]`, `[ CANCEL ]`, `[ ERROR ]`).
 * 🔄 **Smart Auto-Reset**: Resets automatically when starting a brand-new queue, but retains state across batch steps.
 
-![Demo](assets/bitimer.gif)
-*(Click swatches to change display color)*
+<p align="center">
+  <img src="assets/bitimer.gif" alt="Batch Image Timer Screen Capture"><br>
+  <sub>*Click the color swatches on the node to switch LED display themes*</sub>
+</p>
 
 ---
 
@@ -28,7 +30,7 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
     ```
 3. Clone this repository:
     ```bash
-    git clone https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git
+    git clone [https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git](https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git)
     ```
 4. Restart ComfyUI.
 
