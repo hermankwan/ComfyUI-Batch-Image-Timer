@@ -30,7 +30,7 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
     ```
 3. Clone this repository:
     ```bash
-    git clone [https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git](https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git)
+    git clone https://github.com/hermankwan/ComfyUI-Batch-Image-Timer
     ```
 4. Restart ComfyUI.
 
