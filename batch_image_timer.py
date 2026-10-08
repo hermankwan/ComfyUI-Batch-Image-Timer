@@ -11,7 +11,11 @@ class TimerManager:
 
 @PromptServer.instance.routes.post("/batch_timer/reset")
 async def reset_timer(request):
-    data = await request.json() if request.has_body else {}
+    try:
+        data = await request.json()
+    except Exception:
+        data = {}
+        
     force = data.get("force", False)
 
     if TimerManager.is_running and not force:
@@ -22,7 +26,10 @@ async def reset_timer(request):
     TimerManager.completed_count = 0
     TimerManager.last_elapsed = 0.0
 
-    return web.json_response({"status": "ok"})
+    return web.json_response({
+        "status": "ok",
+        "server_time": TimerManager.start_time
+    })
 
 
 class BatchImageTimer:
@@ -31,6 +38,9 @@ class BatchImageTimer:
         return {
             "required": {
                 "total_images": ("INT", {"default": 1, "min": 1, "max": 999999}),
+            },
+            "hidden": {
+                "unique_id": "UNIQUE_ID",
             }
         }
 
@@ -44,7 +54,7 @@ class BatchImageTimer:
     def IS_CHANGED(cls, **kwargs):
         return float("nan")
 
-    def process(self, total_images):
+    def process(self, total_images, unique_id=None):
         now = time.time()
         
         if TimerManager.start_time is None or not TimerManager.is_running:
@@ -54,7 +64,7 @@ class BatchImageTimer:
 
         TimerManager.completed_count += 1
         TimerManager.total_images = total_images
-        elapsed_sec = now - TimerManager.start_time
+        elapsed_sec = max(0.0, now - TimerManager.start_time)
         TimerManager.last_elapsed = elapsed_sec
 
         is_final = False
@@ -62,11 +72,13 @@ class BatchImageTimer:
             is_final = True
 
         PromptServer.instance.send_sync("batch_timer_update", {
+            "node_id": unique_id,
             "current": TimerManager.completed_count,
             "total": total_images,
             "elapsed_sec": elapsed_sec,
             "is_running": True,
-            "is_final": is_final
+            "is_final": is_final,
+            "server_time": now
         })
 
         if is_final:

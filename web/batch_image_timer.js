@@ -3,6 +3,7 @@ import { api } from "/scripts/api.js";
 
 window.__BATCH_TIMER__ = window.__BATCH_TIMER__ || {
     isRunning: false,
+    isLocked: false,          // 标记是否已完成并锁定最终精确时间
     baseElapsedMs: 0,
     syncClientTime: 0,
     completedCount: 0,
@@ -34,7 +35,8 @@ function startClientTicker() {
 
 function stopClientTicker() {
     if (timerState.isRunning) {
-        if (timerState.syncClientTime > 0) {
+        // 未锁定（即非正常 final 结算）时才进行本地插值累加
+        if (!timerState.isLocked && timerState.syncClientTime > 0) {
             timerState.baseElapsedMs += (performance.now() - timerState.syncClientTime);
         }
         timerState.syncClientTime = 0;
@@ -146,10 +148,18 @@ function patchTimerNodeUI(node) {
         const nodeW = this.size[0];
         const nodeH = this.size[1];
 
+        // 计算所有 widgets 的真实占用底部位置
         let headerOffset = 30;
         if (this.widgets && this.widgets.length > 0) {
-            const lastWidget = this.widgets[this.widgets.length - 1];
-            headerOffset = (lastWidget && lastWidget.last_y) ? (lastWidget.last_y + 25) : 65;
+            let maxY = 0;
+            for (const w of this.widgets) {
+                if (w.last_y !== undefined) {
+                    const h = w.computeSize ? w.computeSize()[1] : 20;
+                    const bottom = w.last_y + h;
+                    if (bottom > maxY) maxY = bottom;
+                }
+            }
+            headerOffset = maxY > 0 ? maxY + 15 : 65;
         }
 
         const margin = 10;
@@ -173,7 +183,8 @@ function patchTimerNodeUI(node) {
         const centerY = topOffset + rectH * 0.42;
 
         let currentElapsed = timerState.baseElapsedMs;
-        if (timerState.isRunning && timerState.syncClientTime > 0) {
+        // 如果处于运行状态且未锁定，则累加本地时间差值
+        if (timerState.isRunning && !timerState.isLocked && timerState.syncClientTime > 0) {
             currentElapsed += (performance.now() - timerState.syncClientTime);
         }
 
@@ -299,6 +310,7 @@ app.registerExtension({
 
                     if (!isAlreadyRunning) {
                         timerState.isRunning = true;
+                        timerState.isLocked = false;
                         timerState.baseElapsedMs = 0;
                         timerState.syncClientTime = performance.now();
                         timerState.progressText = "[ STARTING... ]";
@@ -312,23 +324,33 @@ app.registerExtension({
         }
 
         api.addEventListener("batch_timer_update", (event) => {
-            const { current, total, elapsed_sec } = event.detail || {};
+            const { current, total, elapsed_sec, is_final } = event.detail || {};
 
             timerState.completedCount = current;
             timerState.totalImages = total;
-            timerState.baseElapsedMs = elapsed_sec * 1000;
-            timerState.syncClientTime = performance.now();
             timerState.progressText = `[ ${current} / ${total} ]`;
-            
-            timerState.isRunning = true;
-            startClientTicker();
+
+            if (is_final) {
+                // 收到最终结算，锁定基准耗时，停止本地插值
+                timerState.baseElapsedMs = elapsed_sec * 1000;
+                timerState.syncClientTime = performance.now();
+                timerState.isLocked = true;
+                stopClientTicker();
+            } else {
+                timerState.baseElapsedMs = elapsed_sec * 1000;
+                timerState.syncClientTime = performance.now();
+                timerState.isRunning = true;
+                timerState.isLocked = false;
+                startClientTicker();
+            }
 
             app.graph?.setDirtyCanvas(true, true);
         });
 
         api.addEventListener("executing", (event) => {
             const node = event.detail;
-            if (node === null) {
+            // 判断是否全流程结束（node 为 null 或 undefined）
+            if (!node) {
                 if (timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0) {
                     stopClientTicker();
                 }
@@ -343,12 +365,14 @@ app.registerExtension({
         });
 
         api.addEventListener("execution_error", () => {
+            timerState.isLocked = false;
             stopClientTicker();
             timerState.progressText = "[ ERROR ]";
             app.graph?.setDirtyCanvas(true, true);
         });
 
         api.addEventListener("execution_interrupted", () => {
+            timerState.isLocked = false;
             stopClientTicker();
             timerState.progressText = "[ CANCEL ]";
             app.graph?.setDirtyCanvas(true, true);
