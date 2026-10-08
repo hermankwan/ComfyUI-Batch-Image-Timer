@@ -35,7 +35,6 @@ function startClientTicker() {
 
 function stopClientTicker() {
     if (timerState.isRunning) {
-        // 未锁定（即非正常 final 结算）时才进行本地插值累加
         if (!timerState.isLocked && timerState.syncClientTime > 0) {
             timerState.baseElapsedMs += (performance.now() - timerState.syncClientTime);
         }
@@ -148,7 +147,7 @@ function patchTimerNodeUI(node) {
         const nodeW = this.size[0];
         const nodeH = this.size[1];
 
-        // 计算所有 widgets 的真实占用底部位置
+        // 健壮地计算所有 widgets 的真实占用底部位置
         let headerOffset = 30;
         if (this.widgets && this.widgets.length > 0) {
             let maxY = 0;
@@ -183,7 +182,6 @@ function patchTimerNodeUI(node) {
         const centerY = topOffset + rectH * 0.42;
 
         let currentElapsed = timerState.baseElapsedMs;
-        // 如果处于运行状态且未锁定，则累加本地时间差值
         if (timerState.isRunning && !timerState.isLocked && timerState.syncClientTime > 0) {
             currentElapsed += (performance.now() - timerState.syncClientTime);
         }
@@ -324,35 +322,29 @@ app.registerExtension({
         }
 
         api.addEventListener("batch_timer_update", (event) => {
-            const { current, total, elapsed_sec, is_final } = event.detail || {};
+            const { current, total, elapsed_sec } = event.detail || {};
 
             timerState.completedCount = current;
             timerState.totalImages = total;
             timerState.progressText = `[ ${current} / ${total} ]`;
 
-            if (is_final) {
-                // 收到最终结算，锁定基准耗时，停止本地插值
-                timerState.baseElapsedMs = elapsed_sec * 1000;
-                timerState.syncClientTime = performance.now();
-                timerState.isLocked = true;
-                stopClientTicker();
-            } else {
-                timerState.baseElapsedMs = elapsed_sec * 1000;
-                timerState.syncClientTime = performance.now();
-                timerState.isRunning = true;
-                timerState.isLocked = false;
-                startClientTicker();
-            }
+            // 更新来自服务端的基准时间并保持计时运行
+            timerState.baseElapsedMs = elapsed_sec * 1000;
+            timerState.syncClientTime = performance.now();
+            timerState.isRunning = true;
+            timerState.isLocked = false;
+            startClientTicker();
 
             app.graph?.setDirtyCanvas(true, true);
         });
 
         api.addEventListener("executing", (event) => {
             const node = event.detail;
-            // 判断是否全流程结束（node 为 null 或 undefined）
+            // 当 node 为 null 或 undefined 时，表示整个队列的工作流（包括最后一张图）完全执行完毕
             if (!node) {
                 if (timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0) {
                     stopClientTicker();
+                    timerState.progressText = `[ ${timerState.completedCount} / ${timerState.totalImages} ]`;
                 }
             }
         });

@@ -67,21 +67,16 @@ class BatchImageTimer:
         elapsed_sec = max(0.0, now - TimerManager.start_time)
         TimerManager.last_elapsed = elapsed_sec
 
-        is_final = False
-        if total_images > 0 and TimerManager.completed_count >= total_images:
-            is_final = True
-
+        # 注意：此处保持 is_final = False，不要提前让后端结束计时状态
+        # 计时器的停止交给前端在监听到 Workflow 执行结束 (executing: null) 时统一处理
         PromptServer.instance.send_sync("batch_timer_update", {
             "node_id": unique_id,
             "current": TimerManager.completed_count,
             "total": total_images,
             "elapsed_sec": elapsed_sec,
             "is_running": True,
-            "is_final": is_final,
+            "is_final": False,
             "server_time": now
         })
-
-        if is_final:
-            TimerManager.is_running = False
 
         return ()
