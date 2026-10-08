@@ -20,23 +20,26 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 
 1. Open your terminal or command prompt.
 2. Navigate to your ComfyUI `custom_nodes` folder:
+    ```bash
+    cd ComfyUI/custom_nodes
+    ```
+3. Clone this repository:
+    ```bash
+    git clone https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git
+    ```
+4. Restart ComfyUI.
 
-```bash
-cd ComfyUI/custom_nodes
-Clone this repository:
+---
 
-Bash
-git clone [https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git](https://github.com/hermankwan/ComfyUI-Batch-Image-Timer.git)
-Restart ComfyUI.
+## 🚀 How to Use
 
-🚀 How to Use
-Double-click on the ComfyUI canvas or search for Batch Image Timer.
+1. Double-click on the ComfyUI canvas or search for **`Batch Image Timer`**.
+2. Place the node in your batch generation workflow.
+3. Set the `total_images` parameter to match the total count of images in your batch or loop execution.
+4. Click **Queue Prompt**. The node will keep timing seamlessly across all iterations.
 
-Place the node in your batch generation workflow.
+---
 
-Set the total_images parameter to match the total count of images in your batch or loop execution.
+## 📄 License
 
-Click Queue Prompt. The node will keep timing seamlessly across all iterations.
-
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
