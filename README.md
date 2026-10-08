@@ -20,8 +20,9 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 
 1. Open your terminal or command prompt.
 2. Navigate to your ComfyUI `custom_nodes` folder:
-   ```bash
-   cd ComfyUI/custom_nodes
+
+```bash
+cd ComfyUI/custom_nodes
 Clone this repository:
 
 Bash
