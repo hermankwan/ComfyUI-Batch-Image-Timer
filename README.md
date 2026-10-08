@@ -13,6 +13,7 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 * 🔄 **Smart Auto-Reset**: Resets automatically when starting a brand-new queue, but retains state across batch steps.
 
 ![Demo](assets/bitimer.gif)
+*(Click swatches to change display color)*
 
 ---
 
