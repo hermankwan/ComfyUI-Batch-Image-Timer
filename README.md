@@ -22,6 +22,8 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 
 ## 📦 Installation
 
+> **Note:** This node uses native Python libraries and web standard components only. No external dependencies or `requirements.txt` installation are required.
+
 ### Method 1: Git Clone (Manual)
 
 1. Open your terminal or command prompt.
