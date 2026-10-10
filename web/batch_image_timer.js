@@ -24,7 +24,7 @@ const COLOR_PALETTE = [
 ];
 
 const INACTIVE_COLOR_MAP = {
-    "#FFFFFF": "#1A1A1A",
+    "#FFFFFF": "#2A2A2A",
     "#00BFFF": "#002B36",
     "#00FF88": "#003311",
     "#FFCC00": "#332600",

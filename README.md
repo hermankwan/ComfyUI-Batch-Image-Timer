@@ -10,6 +10,7 @@ A custom node for ComfyUI that provides a **real-time 7-segment LED display time
 * 🎨 **Interactive Palette**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink).
 * ⏱️ **Accurate Batch Timing**: Seamlessly measures time spent across multiple batch iterations without resetting prematurely.
 * 📊 **Live Progress Counter**: Displays real-time progress `[ Current / Total ]` and execution status (`[ STARTING... ]`, `[ CANCEL ]`, `[ ERROR ]`).
+* 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*, *ComfyUI Simple Batch*) to automatically update image counts without manual input.
 * 🔄 **Smart Auto-Reset**: Resets automatically when starting a brand-new queue, but retains state across batch steps.
 
 <p align="center">
