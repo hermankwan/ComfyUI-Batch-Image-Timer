@@ -10,7 +10,10 @@ window.__BATCH_TIMER__ = window.__BATCH_TIMER__ || {
     totalImages: 0,
     intervalId: null,
     progressText: "[ READY ]",
-    activeColor: "#FFFFFF"
+    activeColor: "#FFFFFF",
+    // MOD 002: 记录后端最近一次传来的总耗时与重置时的累积偏移量
+    lastBackendElapsedMs: 0,  
+    resetElapsedOffsetMs: 0   
 };
 
 const timerState = window.__BATCH_TIMER__;
@@ -29,7 +32,7 @@ const INACTIVE_COLOR_MAP = {
     "#00FF88": "#003311",
     "#FFCC00": "#332600",
     "#FF007F": "#33001A"
-}
+};
 
 function startClientTicker() {
     if (!timerState.intervalId) {
@@ -120,8 +123,18 @@ function patchTimerNodeUI(node) {
     node.colorSwatches = [];
     node.lastMousePos = [0, 0];
     node._swatchHovered = false;
+    node._digitHovered = false;
+    node._digitArea = null;
+
+    // MOD 001: 初始化工作流持久化属性（颜色保存与状态恢复）
+    node.properties = node.properties || {};
+    if (!node.properties.activeColor) {
+        node.properties.activeColor = "#FFFFFF";
+    }
+    timerState.activeColor = node.properties.activeColor;
 
     node.onMouseDown = function (e, pos) {
+        // 1. 检查是否点击了调色板
         if (this.colorSwatches && this.colorSwatches.length > 0) {
             for (const swatch of this.colorSwatches) {
                 if (
@@ -131,10 +144,42 @@ function patchTimerNodeUI(node) {
                     pos[1] <= swatch.y + swatch.h
                 ) {
                     timerState.activeColor = swatch.color;
+                    // MOD 001: 将选中的颜色绑定到节点属性，随工作流保存
+                    this.properties.activeColor = swatch.color; 
                     app.graph?.setDirtyCanvas(true, true);
                     return true;
                 }
             }
+        }
+
+        // 2. 检查是否点击了灯管数字区域（纯前端重置，不影响工作流）
+        if (this._digitArea &&
+            pos[0] >= this._digitArea.x &&
+            pos[0] <= this._digitArea.x + this._digitArea.w &&
+            pos[1] >= this._digitArea.y &&
+            pos[1] <= this._digitArea.y + this._digitArea.h
+        ) {
+            if (timerState.isRunning) {
+                // MOD 002: 运行中点击：记录当前后端对应的时间点作为偏移量，使后续更新减去此偏移实现清零重计
+                let currentBackendTime = timerState.lastBackendElapsedMs;
+                if (timerState.syncClientTime > 0) {
+                    currentBackendTime += (performance.now() - timerState.syncClientTime);
+                }
+                timerState.resetElapsedOffsetMs = currentBackendTime;
+                timerState.baseElapsedMs = 0;
+                timerState.syncClientTime = performance.now();
+                timerState.isLocked = false;
+            } else {
+                // MOD 002: 停止状态点击：计时归零，偏移清零，计数器恢复成 [ READY ]
+                timerState.resetElapsedOffsetMs = 0;
+                timerState.baseElapsedMs = 0;
+                timerState.lastBackendElapsedMs = 0;
+                timerState.syncClientTime = 0;
+                timerState.isLocked = false;
+                timerState.progressText = "[ READY ]";
+            }
+            app.graph?.setDirtyCanvas(true, true);
+            return true;
         }
     };
 
@@ -145,9 +190,12 @@ function patchTimerNodeUI(node) {
 
     node.onMouseLeave = function (e) {
         const canvasEl = app.canvas?.canvas;
-        if (canvasEl && this._swatchHovered) {
-            canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair";
-            this._swatchHovered = false;
+        if (canvasEl) {
+            if (this._swatchHovered || this._digitHovered) {
+                canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair";
+                this._swatchHovered = false;
+                this._digitHovered = false;
+            }
         }
     };
 
@@ -155,7 +203,6 @@ function patchTimerNodeUI(node) {
         const nodeW = this.size[0];
         const nodeH = this.size[1];
 
-        // 健壮地计算所有 widgets 的真实占用底部位置
         let headerOffset = 30;
         if (this.widgets && this.widgets.length > 0) {
             let maxY = 0;
@@ -205,6 +252,14 @@ function patchTimerNodeUI(node) {
         let startX = (nodeW - totalDisplayWidth) / 2;
         const digitStartY = centerY - (digitHeight / 2);
 
+        // MOD 002: 记录灯管数字区域，用于光标小手悬停检测与点击响应
+        this._digitArea = {
+            x: startX - 4,
+            y: digitStartY - 4,
+            w: totalDisplayWidth + 8,
+            h: digitHeight + 8
+        };
+
         // 标题
         const titleFontSize = Math.max(9, Math.round(10 * scale));
         ctx.fillStyle = "#666666";
@@ -213,6 +268,10 @@ function patchTimerNodeUI(node) {
         ctx.fillText("TOTAL ELAPSED", nodeW / 2, digitStartY - 8 * scale);
 
         // 7 段数码管数字
+        // MOD 001: 确保渲染时优先同步节点内保存的属性颜色
+        if (this.properties && this.properties.activeColor) {
+            timerState.activeColor = this.properties.activeColor;
+        }
         const activeColor = timerState.activeColor || "#FFFFFF";
         const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#1A1A1A";
 
@@ -266,32 +325,37 @@ function patchTimerNodeUI(node) {
 
         ctx.restore();
 
-        // 光标控制
+        // MOD 002: 光标与悬停状态精细控制（仅在调色板或数字区域显示小手）
         const canvasEl = app.canvas?.canvas;
-        if (canvasEl && this.lastMousePos && this.colorSwatches.length > 0) {
+        if (canvasEl && this.lastMousePos) {
             const [mx, my] = this.lastMousePos;
             let isHoveringSwatch = false;
+            let isHoveringDigit = false;
 
             for (const swatch of this.colorSwatches) {
-                if (
-                    mx >= swatch.x &&
-                    mx <= swatch.x + swatch.w &&
-                    my >= swatch.y &&
-                    my <= swatch.y + swatch.h
-                ) {
+                if (mx >= swatch.x && mx <= swatch.x + swatch.w && my >= swatch.y && my <= swatch.y + swatch.h) {
                     isHoveringSwatch = true;
                     break;
                 }
             }
 
+            if (this._digitArea &&
+                mx >= this._digitArea.x && mx <= this._digitArea.x + this._digitArea.w &&
+                my >= this._digitArea.y && my <= this._digitArea.y + this._digitArea.h
+            ) {
+                isHoveringDigit = true;
+            }
+
             const currentCursor = canvasEl.style.cursor;
             if (!currentCursor.includes("resize")) {
-                if (isHoveringSwatch) {
+                if (isHoveringSwatch || isHoveringDigit) {
                     canvasEl.style.cursor = "pointer";
-                    this._swatchHovered = true;
-                } else if (this._swatchHovered) {
+                    this._swatchHovered = isHoveringSwatch;
+                    this._digitHovered = isHoveringDigit;
+                } else if (this._swatchHovered || this._digitHovered) {
                     canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair";
                     this._swatchHovered = false;
+                    this._digitHovered = false;
                 }
             }
         }
@@ -318,6 +382,9 @@ app.registerExtension({
                         timerState.isRunning = true;
                         timerState.isLocked = false;
                         timerState.baseElapsedMs = 0;
+                        // MOD 002: 新运行开始，重置偏移量与后端记录
+                        timerState.resetElapsedOffsetMs = 0; 
+                        timerState.lastBackendElapsedMs = 0;
                         timerState.syncClientTime = performance.now();
                         timerState.progressText = "[ STARTING... ]";
                     }
@@ -336,8 +403,10 @@ app.registerExtension({
             timerState.totalImages = total;
             timerState.progressText = `[ ${current} / ${total} ]`;
 
-            // 更新来自服务端的基准时间并保持计时运行
-            timerState.baseElapsedMs = elapsed_sec * 1000;
+            // MOD 002: 记录后端最近一次传来的总耗时
+            timerState.lastBackendElapsedMs = elapsed_sec * 1000;
+            // MOD 002: 用后端总耗时减去用户点击重置时产生的偏移量，实现局部独立清零重计
+            timerState.baseElapsedMs = Math.max(0, timerState.lastBackendElapsedMs - timerState.resetElapsedOffsetMs);
             timerState.syncClientTime = performance.now();
             timerState.isRunning = true;
             timerState.isLocked = false;
@@ -348,7 +417,6 @@ app.registerExtension({
 
         api.addEventListener("executing", (event) => {
             const node = event.detail;
-            // 当 node 为 null 或 undefined 时，表示整个队列的工作流（包括最后一张图）完全执行完毕
             if (!node) {
                 if (timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0) {
                     stopClientTicker();
