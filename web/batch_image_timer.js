@@ -23,6 +23,14 @@ const COLOR_PALETTE = [
     "#FF007F"  // 霓虹粉
 ];
 
+const INACTIVE_COLOR_MAP = {
+    "#FFFFFF": "#1A1A1A",
+    "#00BFFF": "#002B36",
+    "#00FF88": "#003311",
+    "#FFCC00": "#332600",
+    "#FF007F": "#33001A"
+}
+
 function startClientTicker() {
     if (!timerState.intervalId) {
         timerState.intervalId = setInterval(() => {
@@ -206,7 +214,7 @@ function patchTimerNodeUI(node) {
 
         // 7 段数码管数字
         const activeColor = timerState.activeColor || "#FFFFFF";
-        const inactiveColor = "#1A1A1A";
+        const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#1A1A1A";
 
         for (let i = 0; i < timeStr.length; i++) {
             const char = timeStr[i];
