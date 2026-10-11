@@ -3,17 +3,16 @@ import { api } from "/scripts/api.js";
 
 window.__BATCH_TIMER__ = window.__BATCH_TIMER__ || {
     isRunning: false,
-    isLocked: false,          // 标记是否已完成并锁定最终精确时间
+    isLocked: false,
     baseElapsedMs: 0,
     syncClientTime: 0,
     completedCount: 0,
     totalImages: 0,
     intervalId: null,
-    progressText: "[ READY ]",
+    progressText: "READY",
     activeColor: "#FFFFFF",
-    // MOD 002: 记录后端最近一次传来的总耗时与重置时的累积偏移量
-    lastBackendElapsedMs: 0,  
-    resetElapsedOffsetMs: 0   
+    isTerminated: false,
+    isPaused: false
 };
 
 const timerState = window.__BATCH_TIMER__;
@@ -37,7 +36,7 @@ const INACTIVE_COLOR_MAP = {
 function startClientTicker() {
     if (!timerState.intervalId) {
         timerState.intervalId = setInterval(() => {
-            if (timerState.isRunning) {
+            if (timerState.isRunning && !timerState.isPaused) {
                 app.graph?.setDirtyCanvas(true, true);
             }
         }, 100);
@@ -46,7 +45,7 @@ function startClientTicker() {
 
 function stopClientTicker() {
     if (timerState.isRunning) {
-        if (!timerState.isLocked && timerState.syncClientTime > 0) {
+        if (!timerState.isLocked && timerState.syncClientTime > 0 && !timerState.isPaused) {
             timerState.baseElapsedMs += (performance.now() - timerState.syncClientTime);
         }
         timerState.syncClientTime = 0;
@@ -122,11 +121,13 @@ function patchTimerNodeUI(node) {
     node.size = [280, 175];
     node.colorSwatches = [];
     node.lastMousePos = [0, 0];
+    
     node._swatchHovered = false;
     node._digitHovered = false;
+    node._counterHovered = false;
     node._digitArea = null;
+    node._counterArea = null;
 
-    // MOD 001: 初始化工作流持久化属性（颜色保存与状态恢复）
     node.properties = node.properties || {};
     if (!node.properties.activeColor) {
         node.properties.activeColor = "#FFFFFF";
@@ -144,7 +145,6 @@ function patchTimerNodeUI(node) {
                     pos[1] <= swatch.y + swatch.h
                 ) {
                     timerState.activeColor = swatch.color;
-                    // MOD 001: 将选中的颜色绑定到节点属性，随工作流保存
                     this.properties.activeColor = swatch.color; 
                     app.graph?.setDirtyCanvas(true, true);
                     return true;
@@ -152,31 +152,51 @@ function patchTimerNodeUI(node) {
             }
         }
 
-        // 2. 检查是否点击了灯管数字区域（纯前端重置，不影响工作流）
+        // 2. 检查是否点击了计数器区域（实现 暂停 / 恢复 切换功能）
+        if (this._counterArea &&
+            pos[0] >= this._counterArea.x &&
+            pos[0] <= this._counterArea.x + this._counterArea.w &&
+            pos[1] >= this._counterArea.y &&
+            pos[1] <= this._counterArea.y + this._counterArea.h
+        ) {
+            if (timerState.isRunning && !timerState.isTerminated) {
+                if (!timerState.isPaused) {
+                    if (!timerState.isLocked && timerState.syncClientTime > 0) {
+                        timerState.baseElapsedMs += (performance.now() - timerState.syncClientTime);
+                    }
+                    timerState.syncClientTime = 0;
+                    timerState.isPaused = true;
+                } else {
+                    timerState.syncClientTime = performance.now();
+                    timerState.isPaused = false;
+                }
+                app.graph?.setDirtyCanvas(true, true);
+                return true;
+            }
+        }
+
+        // 3. 检查是否点击了灯管数字区域（重置计时）
         if (this._digitArea &&
             pos[0] >= this._digitArea.x &&
             pos[0] <= this._digitArea.x + this._digitArea.w &&
             pos[1] >= this._digitArea.y &&
             pos[1] <= this._digitArea.y + this._digitArea.h
         ) {
-            if (timerState.isRunning) {
-                // MOD 002: 运行中点击：记录当前后端对应的时间点作为偏移量，使后续更新减去此偏移实现清零重计
-                let currentBackendTime = timerState.lastBackendElapsedMs;
-                if (timerState.syncClientTime > 0) {
-                    currentBackendTime += (performance.now() - timerState.syncClientTime);
-                }
-                timerState.resetElapsedOffsetMs = currentBackendTime;
-                timerState.baseElapsedMs = 0;
-                timerState.syncClientTime = performance.now();
-                timerState.isLocked = false;
-            } else {
-                // MOD 002: 停止状态点击：计时归零，偏移清零，计数器恢复成 [ READY ]
-                timerState.resetElapsedOffsetMs = 0;
-                timerState.baseElapsedMs = 0;
-                timerState.lastBackendElapsedMs = 0;
-                timerState.syncClientTime = 0;
-                timerState.isLocked = false;
-                timerState.progressText = "[ READY ]";
+            fetch("/batch_timer/reset", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ force: false })
+            }).catch(err => console.error("Timer reset fetch failed", err));
+
+            timerState.baseElapsedMs = 0;
+            timerState.syncClientTime = performance.now();
+            timerState.isLocked = false;
+            timerState.isPaused = false;
+            if (!timerState.isRunning) {
+                timerState.isTerminated = false;
+                timerState.completedCount = 0;
+                timerState.totalImages = 0;
+                timerState.progressText = "READY";
             }
             app.graph?.setDirtyCanvas(true, true);
             return true;
@@ -191,10 +211,11 @@ function patchTimerNodeUI(node) {
     node.onMouseLeave = function (e) {
         const canvasEl = app.canvas?.canvas;
         if (canvasEl) {
-            if (this._swatchHovered || this._digitHovered) {
+            if (this._swatchHovered || this._digitHovered || this._counterHovered) {
                 canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair";
                 this._swatchHovered = false;
                 this._digitHovered = false;
+                this._counterHovered = false;
             }
         }
     };
@@ -237,7 +258,7 @@ function patchTimerNodeUI(node) {
         const centerY = topOffset + rectH * 0.42;
 
         let currentElapsed = timerState.baseElapsedMs;
-        if (timerState.isRunning && !timerState.isLocked && timerState.syncClientTime > 0) {
+        if (timerState.isRunning && !timerState.isLocked && !timerState.isPaused && timerState.syncClientTime > 0) {
             currentElapsed += (performance.now() - timerState.syncClientTime);
         }
 
@@ -252,7 +273,6 @@ function patchTimerNodeUI(node) {
         let startX = (nodeW - totalDisplayWidth) / 2;
         const digitStartY = centerY - (digitHeight / 2);
 
-        // MOD 002: 记录灯管数字区域，用于光标小手悬停检测与点击响应
         this._digitArea = {
             x: startX - 4,
             y: digitStartY - 4,
@@ -267,13 +287,12 @@ function patchTimerNodeUI(node) {
         ctx.textAlign = "center";
         ctx.fillText("TOTAL ELAPSED", nodeW / 2, digitStartY - 8 * scale);
 
-        // 7 段数码管数字
-        // MOD 001: 确保渲染时优先同步节点内保存的属性颜色
+        // 7 段数码管数字绘制
         if (this.properties && this.properties.activeColor) {
             timerState.activeColor = this.properties.activeColor;
         }
         const activeColor = timerState.activeColor || "#FFFFFF";
-        const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#1A1A1A";
+        const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#2A2A2A";
 
         for (let i = 0; i < timeStr.length; i++) {
             const char = timeStr[i];
@@ -286,7 +305,7 @@ function patchTimerNodeUI(node) {
             }
         }
 
-        // 调色板小方块
+        // 调色板小方块绘制
         const swatchSize = Math.max(5, Math.round(6 * scale));
         const swatchGap = 6 * scale;
         const totalSwatchesW = COLOR_PALETTE.length * swatchSize + (COLOR_PALETTE.length - 1) * swatchGap;
@@ -316,21 +335,61 @@ function patchTimerNodeUI(node) {
             swatchStartX += swatchSize + swatchGap;
         });
 
-        // 进度文本 [ X / Y ]
+        // ==========================================
+        // UI 精修: 方括号独立固定 + 统一字号规范 + 悬停显示 PAUSE/RESUME
+        // ==========================================
         const statusFontSize = Math.max(10, Math.round(11 * scale));
-        ctx.fillStyle = timerState.isRunning ? "#00BFFF" : "#5A8B9B";
+        const statusY = swatchY + swatchSize + 14 * scale;
+
+        const isHovering = timerState.isRunning && this._counterHovered && !timerState.isTerminated;
+        let rawText;
+        if (isHovering) {
+            rawText = timerState.isPaused ? "RESUME" : "PAUSE";
+        } else {
+            rawText = timerState.isTerminated ? timerState.progressText : (timerState.totalImages > 0 ? `${timerState.completedCount} / ${timerState.totalImages}` : timerState.progressText);
+        }
+        const innerText = rawText.replace(/^\[\s*\vert{}\s*\]$/g, '');
+
+        const bracketColor = "#666666";
+        const halfContainerWidth = 32; 
+        const leftBracketX = (nodeW / 2) - halfContainerWidth;
+        const rightBracketX = (nodeW / 2) + halfContainerWidth;
+
+        // 渲染左方括号
         ctx.font = `bold ${statusFontSize}px monospace`;
+        ctx.fillStyle = bracketColor;
+        ctx.textAlign = "left";
+        ctx.fillText("[", leftBracketX, statusY);
+
+        // 渲染右方括号
+        ctx.textAlign = "right";
+        ctx.fillText("]", rightBracketX, statusY);
+
+        // 渲染中间文本：使用统一字号规范。悬停时赋提示色，平时 x/y 始终保持标准亮蓝色
+        ctx.font = `bold ${statusFontSize}px monospace`;
+        if (isHovering) {
+            ctx.fillStyle = timerState.isPaused ? "#00FF88" : "#FFB300"; 
+        } else {
+            ctx.fillStyle = timerState.isRunning ? "#00BFFF" : "#5A8B9B"; 
+        }
         ctx.textAlign = "center";
-        ctx.fillText(timerState.progressText, nodeW / 2, swatchY + swatchSize + 14 * scale);
+        ctx.fillText(innerText, nodeW / 2, statusY);
+
+        this._counterArea = {
+            x: leftBracketX - 4,
+            y: statusY - statusFontSize,
+            w: (halfContainerWidth * 2) + 8,
+            h: statusFontSize + 6
+        };
 
         ctx.restore();
 
-        // MOD 002: 光标与悬停状态精细控制（仅在调色板或数字区域显示小手）
         const canvasEl = app.canvas?.canvas;
-        if (canvasEl && this.lastMousePos) {
+        if (canvasEl && this.lastMousePos && this.colorSwatches.length > 0) {
             const [mx, my] = this.lastMousePos;
             let isHoveringSwatch = false;
             let isHoveringDigit = false;
+            let isHoveringCounter = false;
 
             for (const swatch of this.colorSwatches) {
                 if (mx >= swatch.x && mx <= swatch.x + swatch.w && my >= swatch.y && my <= swatch.y + swatch.h) {
@@ -339,23 +398,36 @@ function patchTimerNodeUI(node) {
                 }
             }
 
-            if (this._digitArea &&
-                mx >= this._digitArea.x && mx <= this._digitArea.x + this._digitArea.w &&
-                my >= this._digitArea.y && my <= this._digitArea.y + this._digitArea.h
-            ) {
+            if (this._digitArea && mx >= this._digitArea.x && mx <= this._digitArea.x + this._digitArea.w && my >= this._digitArea.y && my <= this._digitArea.y + this._digitArea.h) {
                 isHoveringDigit = true;
+            }
+
+            if (this._counterArea && mx >= this._counterArea.x && mx <= this._counterArea.x + this._counterArea.w && my >= this._counterArea.y && my <= this._counterArea.y + this._counterArea.h) {
+                isHoveringCounter = true;
             }
 
             const currentCursor = canvasEl.style.cursor;
             if (!currentCursor.includes("resize")) {
-                if (isHoveringSwatch || isHoveringDigit) {
-                    canvasEl.style.cursor = "pointer";
-                    this._swatchHovered = isHoveringSwatch;
-                    this._digitHovered = isHoveringDigit;
-                } else if (this._swatchHovered || this._digitHovered) {
-                    canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair";
+                if (isHoveringSwatch) {
+                    canvasEl.style.cursor = "default"; 
+                    this._swatchHovered = true;
+                    this._digitHovered = false;
+                    this._counterHovered = false;
+                } else if (isHoveringDigit) {
+                    canvasEl.style.cursor = "pointer"; 
+                    this._swatchHovered = false;
+                    this._digitHovered = true;
+                    this._counterHovered = false;
+                } else if (timerState.isRunning && isHoveringCounter && !timerState.isTerminated) {
+                    canvasEl.style.cursor = "pointer"; 
                     this._swatchHovered = false;
                     this._digitHovered = false;
+                    this._counterHovered = true;
+                } else if (this._swatchHovered || this._digitHovered || this._counterHovered) {
+                    canvasEl.style.cursor = app.canvas?.default_connection_cursor || "crosshair"; 
+                    this._swatchHovered = false;
+                    this._digitHovered = false;
+                    this._counterHovered = false;
                 }
             }
         }
@@ -381,12 +453,12 @@ app.registerExtension({
                     if (!isAlreadyRunning) {
                         timerState.isRunning = true;
                         timerState.isLocked = false;
+                        timerState.isTerminated = false; 
+                        timerState.isPaused = false; 
                         timerState.baseElapsedMs = 0;
-                        // MOD 002: 新运行开始，重置偏移量与后端记录
-                        timerState.resetElapsedOffsetMs = 0; 
-                        timerState.lastBackendElapsedMs = 0;
+                        timerState.completedCount = 0;
                         timerState.syncClientTime = performance.now();
-                        timerState.progressText = "[ STARTING... ]";
+                        timerState.progressText = "READY";
                     }
                     startClientTicker();
                 } catch (e) {
@@ -397,37 +469,36 @@ app.registerExtension({
         }
 
         api.addEventListener("batch_timer_update", (event) => {
-            const { current, total, elapsed_sec } = event.detail || {};
+            if (timerState.isTerminated) return;
 
+            const { current, total } = event.detail || {};
+
+            // 仅更新图片计数（x / y），时间交由前端独立自增，彻底隔绝后端绝对时间的干扰
             timerState.completedCount = current;
             timerState.totalImages = total;
-            timerState.progressText = `[ ${current} / ${total} ]`;
+            timerState.progressText = `${current} / ${total}`;
 
-            // MOD 002: 记录后端最近一次传来的总耗时
-            timerState.lastBackendElapsedMs = elapsed_sec * 1000;
-            // MOD 002: 用后端总耗时减去用户点击重置时产生的偏移量，实现局部独立清零重计
-            timerState.baseElapsedMs = Math.max(0, timerState.lastBackendElapsedMs - timerState.resetElapsedOffsetMs);
-            timerState.syncClientTime = performance.now();
-            timerState.isRunning = true;
-            timerState.isLocked = false;
-            startClientTicker();
+            if (!timerState.isPaused) {
+                timerState.isRunning = true;
+                timerState.isLocked = false;
+                startClientTicker();
+            }
 
             app.graph?.setDirtyCanvas(true, true);
         });
 
         api.addEventListener("executing", (event) => {
             const node = event.detail;
-            if (!node) {
+            if (!node && !timerState.isTerminated) {
                 if (timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0) {
                     stopClientTicker();
-                    timerState.progressText = `[ ${timerState.completedCount} / ${timerState.totalImages} ]`;
                 }
             }
         });
 
         api.addEventListener("status", (event) => {
             const queueRemaining = event.detail?.status?.exec_info?.queue_remaining;
-            if (queueRemaining === 0 && timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0) {
+            if (queueRemaining === 0 && timerState.completedCount >= timerState.totalImages && timerState.totalImages > 0 && !timerState.isTerminated) {
                 stopClientTicker();
             }
         });
@@ -435,14 +506,16 @@ app.registerExtension({
         api.addEventListener("execution_error", () => {
             timerState.isLocked = false;
             stopClientTicker();
-            timerState.progressText = "[ ERROR ]";
+            timerState.progressText = "ERROR";
+            timerState.isTerminated = true; 
             app.graph?.setDirtyCanvas(true, true);
         });
 
         api.addEventListener("execution_interrupted", () => {
             timerState.isLocked = false;
             stopClientTicker();
-            timerState.progressText = "[ CANCEL ]";
+            timerState.progressText = "CANCEL";
+            timerState.isTerminated = true; 
             app.graph?.setDirtyCanvas(true, true);
         });
     },
