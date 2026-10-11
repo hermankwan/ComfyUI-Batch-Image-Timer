@@ -1,60 +1,78 @@
 # ⏱️ ComfyUI Batch Image Timer
+**Version: v0.1.1**
 
 A custom node for ComfyUI that provides a **real-time 7-segment LED display timer** to accurately track execution duration and progress during image batching, dataset processing, and image-to-image loop workflows.
 
 ---
 
+## 📌 Where to Find It in ComfyUI
+After installation, you can find this node by right-clicking on the canvas, navigating to **utils** / **batch** (or using the search bar and typing **`Batch Image Timer`**).
+
+---
+
 ## ✨ Features
 
-* 📺 **7-Segment LED UI**: Retro digital clock design rendered directly on the canvas node[cite: 2].
-* 🎨 **Interactive Palette & Persistent Themes**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color preference is automatically saved to the node's properties and persists across sessions.
-* ⏱️ **Accurate Batch Timing**: Seamlessly measures time spent across multiple batch iterations without resetting prematurely[cite: 2].
-* 📊 **Live Progress Counter**: Displays real-time progress `[ Current / Total ]` and execution status (`[ READY ]`, `[ CANCEL ]`, `[ ERROR ]`)[cite: 2].
-* ⏸️ **Interactive Pause & Resume**: Hover over the counter area to display `[ PAUSE ]` or `[ RESUME ]`, allowing you to freeze or continue the timer at any time without affecting the workflow execution or image counts.
-* 🔄 **Smart Reset & Sync**: Click the 7-segment LED digits to manually reset the timer on the fly. 
-* 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*, *ComfyUI Simple Batch*) to automatically update image counts without manual input[cite: 2].
+* 📺 **7-Segment LED UI**: Retro digital clock design rendered directly on the canvas node.
+* 🎨 **Interactive Palette & Theme Persistence**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color choice is automatically saved inside the **Workflow JSON** (per-workflow persistence without affecting global settings).
+* ⏱️ **Accurate Batch Timing**: Seamlessly measures time spent across multiple batch iterations.
+* 📊 **Live Progress Counter & States**: Displays real-time progress `[ Current / Total ]` and clear execution lifecycle states:
+  * `[ READY ]`: Initial state before execution.
+  * `[ CANCEL ]`: Triggered when the user clicks ComfyUI's red **Cancel / Interrupt** button.
+  * `[ ERROR ]`: Triggered automatically when the workflow encounters an exception or execution error from upstream nodes.
+* ⏸️ **Interactive Pause & Resume**: Hover over the counter area to toggle `[ PAUSE ]` / `[ RESUME ]`. 
+  > **⚠️ Semantic Note on Pause:** Pausing **only freezes the UI time ticking**. It does *not* pause or delay the actual backend workflow execution. It is designed to let you exclude personal away-time (e.g., breaks or interruptions) from the final elapsed time statistics.
+* 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*) to automatically update image counts without manual input.
 
 <p align="center">
-  <img src="assets/bitimer.gif" alt="Batch Image Timer Screen Capture"><br>
-  <sub>*Click the color swatches on the node to switch LED display themes*</sub>
+  <img src="assets/bitimer.gif" alt="Batch Image Timer Interaction Demo"><br>
+  <sub>*Hover over the counter to Pause/Resume, and click LED digits to reset.*</sub>
 </p>
 
 ---
 
 ## 📦 Installation
 
-> **Note:** This node uses native Python libraries and web standard components only. No external dependencies or `requirements.txt` installation are required[cite: 2].
+> **Note:** This node relies strictly on native web standard components and ComfyUI API events. No external Python dependencies or `requirements.txt` are required.
 
-### Method 1: Git Clone (Manual)
-
-1. Open your terminal or command prompt[cite: 2].
-2. Navigate to your ComfyUI `custom_nodes` folder[cite: 2]:
-    ```bash
-    cd ComfyUI/custom_nodes
-    ```
-3. Clone this repository[cite: 2]:
-    ```bash
-    git clone https://github.com/hermankwan/ComfyUI-Batch-Image-Timer
-    ```
-4. Restart ComfyUI[cite: 2].
+### Manual Installation (Git Clone)
+1. Navigate to your ComfyUI `custom_nodes` directory:
+   ```bash
+   cd ComfyUI/custom_nodes
+   ```
+2. Clone this repository:
+   ```bash
+   git clone https://github.com/hermankwan/ComfyUI-Batch-Image-Timer
+   ```
+3. Restart your ComfyUI instance.
 
 ---
 
-## 🚀 How to Use
+## 🚀 How to Use & Interactive Controls
 
-1. Double-click on the ComfyUI canvas or search for **`Batch Image Timer`**.
-2. Place the node in your batch generation workflow.
-3. Set the `total_images` parameter to match the total count of images in your batch or loop execution.
-4. Click **Queue Prompt**. The node will keep timing seamlessly across all iterations[cite: 2].
+1. Add **Batch Image Timer** to your workflow graph.
+2. Link your total image count to the `total_images` input.
+3. Click **Queue Prompt** to start.
 
-### 🖱️ Interactive Controls
+### 🖱️ Canvas Interactions
+* **Pause / Resume**: Hover over the bottom counter area while running. Click `[ PAUSE ]` to freeze the timer, and click `[ RESUME ]` to continue.
+* **Manual Reset**: Click directly on the 7-segment LED time digits at any time to reset the elapsed clock back to `00:00:00`.
+* **Theme Swatches**: Click any color block below the digits to change the LED glow color instantly.
 
-* **Pause / Resume Timer**: When the workflow is running, hover your mouse over the bottom counter area (where `x / y` is displayed). It will dynamically show `[ PAUSE ]`. Click it to pause the timer while keeping image processing and counting unaffected. Hover again to see `[ RESUME ]`, and click to pick up right where you left off.
-* **Reset Timer**: Click directly on the 7-segment LED time digits to reset the timer back to `00:00:00` at any point during operation.
-* **Theme Switching & Saving**: Click any of the small color swatches below the LED display to instantly change the active color theme. Your chosen color is automatically saved with the workflow and node properties.
+---
+
+## 📋 Changelog
+
+### v0.1.1
+* Added interactive hover-to-pause (`[ PAUSE ]` / `[ RESUME ]`) functionality.
+* Fixed multi-batch time jumping / rebound bugs by decoupling frontend ticks from backend absolute timestamps.
+* Implemented workflow-scoped theme color persistence.
+* Standardized font sizing and color isolation for progress counters (`x / y`).
+
+### v0.1.0
+* Initial version.
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details[cite: 2].
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
