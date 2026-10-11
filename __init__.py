@@ -7,13 +7,9 @@ __version__ = "0.1.0"
 
 from .batch_image_timer import BatchImageTimer
 
-NODE_CLASS_MAPPINGS = {
-    "BatchImageTimer": BatchImageTimer
-}
+NODE_CLASS_MAPPINGS = {"BatchImageTimer": BatchImageTimer}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "BatchImageTimer": "⏱️ Batch Image Timer"
-}
+NODE_DISPLAY_NAME_MAPPINGS = {"BatchImageTimer": "⏱️ Batch Image Timer"}
 
 WEB_DIRECTORY = "./web"
 
