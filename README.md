@@ -1,4 +1,4 @@
-# ⏱️ ComfyUI-Batch-Image-Timer
+# ⏱️ ComfyUI Batch Image Timer
 **Version: v0.1.1**
 
 A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track execution duration, progress, and performance during bulk image generation, dataset preparation, and image-to-image loop workflows.
@@ -33,7 +33,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 ### Method 1: Via ComfyUI-Manager (Recommended)
 1. Open ComfyUI and click on **Manager** in the menu.
 2. Select **Custom Nodes Manager**.
-3. Search for `ComfyUI-Batch-Image-Timer`.
+3. Search for `ComfyUI Batch Image Timer`.
 4. Click **Install** and restart your ComfyUI.
 
 ### Method 2: Manual Installation (Git Clone)
