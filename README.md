@@ -26,6 +26,13 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ---
 
+<p align="center">
+  <img src="assets/bitimer.gif" alt="Batch Image Timer Interaction Demo"><br>
+  <sub>*Hover over the counter to Pause/Resume, and click LED digits to reset.*</sub>
+</p>
+
+---
+
 ## 📦 Installation
 
 > **Note:** This node relies strictly on native web standard components and ComfyUI API events. No external Python dependencies or `requirements.txt` are required.
