@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-batch-image-timer"
+description = "A real-time 7-segment LED timer node for ComfyUI batch generation tracking."
+version = "0.1.1"
+license = {file = "LICENSE"}
+dependencies = ["aiohttp"]
+
+[project.urls]
+Repository = "https://github.com/hermankwan/ComfyUI-Batch-Image-Timer"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "hermankwan"
+DisplayName = "ComfyUI-Batch-Image-Timer"
+Icon = "https://avatars.githubusercontent.com/u/138355060?s=64&v=4"
