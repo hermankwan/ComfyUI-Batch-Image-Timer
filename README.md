@@ -1,7 +1,7 @@
-# ⏱️ ComfyUI Batch Image Timer
+# ⏱️ ComfyUI-Batch-Image-Timer
 **Version: v0.1.1**
 
-A custom node for ComfyUI that provides a **real-time 7-segment LED display timer** to accurately track execution duration and progress during image batching, dataset processing, and image-to-image loop workflows.
+A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track execution duration, progress, and performance during bulk image generation, dataset preparation, and image-to-image loop workflows.
 
 ---
 
@@ -12,6 +12,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ## ✨ Features
 
+* 🎯 **Dedicated Batch Image Focus**: Tailored specifically for bulk image processing pipelines, sequential loading loops, and image-to-image batch tasks.
 * 📺 **7-Segment LED UI**: Retro digital clock design rendered directly on the canvas node.
 * 🎨 **Interactive Palette & Theme Persistence**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color choice is automatically saved inside the **Workflow JSON** (per-workflow persistence without affecting global settings).
 * ⏱️ **Accurate Batch Timing**: Seamlessly measures time spent across multiple batch iterations.
@@ -23,11 +24,6 @@ After installation, you can find this node by right-clicking on the canvas, navi
   > **⚠️ Semantic Note on Pause:** Pausing **only freezes the UI time ticking**. It does *not* pause or delay the actual backend workflow execution. It is designed to let you exclude personal away-time (e.g., breaks or interruptions) from the final elapsed time statistics.
 * 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*) to automatically update image counts without manual input.
 
-<p align="center">
-  <img src="assets/bitimer.gif" alt="Batch Image Timer Interaction Demo"><br>
-  <sub>*Hover over the counter to Pause/Resume, and click LED digits to reset.*</sub>
-</p>
-
 ---
 
 ## 📦 Installation
@@ -37,7 +33,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 ### Method 1: Via ComfyUI-Manager (Recommended)
 1. Open ComfyUI and click on **Manager** in the menu.
 2. Select **Custom Nodes Manager**.
-3. Search for `ComfyUI Batch Image Timer`.
+3. Search for `ComfyUI-Batch-Image-Timer`.
 4. Click **Install** and restart your ComfyUI.
 
 ### Method 2: Manual Installation (Git Clone)
@@ -55,9 +51,9 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ## 🚀 How to Use & Interactive Controls
 
-1. Add **Batch Image Timer** to your workflow graph.
+1. Add **Batch Image Timer** to your batch image workflow graph.
 2. Link your total image count to the `total_images` input.
-3. Click **Queue Prompt** to start.
+3. Click **Queue Prompt** to start processing your image batches.
 
 ### 🖱️ Canvas Interactions
 * **Pause / Resume**: Hover over the bottom counter area while running. Click `[ PAUSE ]` to freeze the timer, and click `[ RESUME ]` to continue.
@@ -75,7 +71,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 * Standardized font sizing and color isolation for progress counters (`x / y`).
 
 ### v0.1.0
-* Initial version.
+* Initial release focused on batch image workflow timing.
 
 ---
 
