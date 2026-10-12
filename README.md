@@ -69,6 +69,22 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ---
 
+## 💡 How It Works & `total_images` Principles
+
+To ensure accurate time tracking and clean progress stats, **Batch Image Timer** distinguishes between ComfyUI's native tensor batching and sequential image-by-image processing loops:
+
+### 1. Native Tensor Batching (`batch_size = N` in KSampler / Latent)
+* **Behavior**: When you set `batch_size = N` in a Latent node, ComfyUI processes all $N$ images in parallel within a **single Prompt execution cycle**.
+* **Setting Rule**: Keep `total_images = 1` (default).
+* **Explanation**: Since ComfyUI treats this as one monolithic pipeline run, the timer tracks the total execution time for the entire tensor batch as 1 unit of work.
+
+### 2. Sequential / Iterative Batching (e.g., Sequential Image Loaders, Iterative Loops)
+* **Behavior**: Workflows that process images iteratively (one-by-one or item-by-item over multiple execution cycles).
+* **Setting Rule**: Set `total_images = N` (or connect it directly from your batch loader node).
+* **Explanation**: The timer will track real-time progress (`[ Current / Total ]`) and accurately calculate average per-image processing speed across all loop iterations.
+
+---
+
 ## 📋 Changelog
 
 ### v0.1.1
