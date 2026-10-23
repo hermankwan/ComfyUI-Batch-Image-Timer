@@ -1,14 +1,13 @@
 """
 ComfyUI-Batch-Image-Timer
-A real-time 7-segment LED timer node for ComfyUI batch generation tracking.
+A specialized 7-segment LED timer for tracking the total execution time of batch image processing workflows.
 """
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from .batch_image_timer import BatchImageTimer
 
 NODE_CLASS_MAPPINGS = {"BatchImageTimer": BatchImageTimer}
-
 NODE_DISPLAY_NAME_MAPPINGS = {"BatchImageTimer": "⏱️ Batch Image Timer"}
 
 WEB_DIRECTORY = "./web"

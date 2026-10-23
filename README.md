@@ -1,34 +1,37 @@
 # ⏱️ ComfyUI Batch Image Timer
-**Version: v0.1.1**
+**Version: v0.2.0**
 
-A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track execution duration, progress, and performance during bulk image generation, dataset preparation, and image-to-image loop workflows.
+A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track the total execution duration across sequential loops and bulk image generation pipelines.
 
 ---
 
 ## 📌 Where to Find It in ComfyUI
-After installation, you can find this node by right-clicking on the canvas, navigating to **utils** / **batch** (or using the search bar and typing **`Batch Image Timer`**).
+After installation, you can find this node by right-clicking on the canvas, navigating to **utils/timer** (or using the search bar and typing **`Batch Image Timer`**).
 
 ---
 
 ## ✨ Features
 
-* 🎯 **Dedicated Batch Image Focus**: Tailored specifically for bulk image processing pipelines, sequential loading loops, and image-to-image batch tasks.
+* 🎯 **Dedicated Batch Image Focus**: Tailored specifically for bulk image processing pipelines, sequential loading loops (e.g., *Sequential Image Loader*), and image-to-image batch tasks.
 * 📺 **7-Segment LED UI**: Retro digital clock design rendered directly on the canvas node.
-* 🎨 **Interactive Palette & Theme Persistence**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color choice is automatically saved inside the **Workflow JSON** (per-workflow persistence without affecting global settings).
-* ⏱️ **Accurate Batch Timing**: Seamlessly measures time spent across multiple batch iterations.
-* 📊 **Live Progress Counter & States**: Displays real-time progress `[ Current / Total ]` and clear execution lifecycle states:
-  * `[ READY ]`: Initial state before execution.
-  * `[ CANCEL ]`: Triggered when the user clicks ComfyUI's red **Cancel / Interrupt** button.
-  * `[ ERROR ]`: Triggered automatically when the workflow encounters an exception or execution error from upstream nodes.
-* ⏸️ **Interactive Pause & Resume**: Hover over the counter area to toggle `[ PAUSE ]` / `[ RESUME ]`. 
-  > **⚠️ Semantic Note on Pause:** Pausing **only freezes the UI time ticking**. It does *not* pause or delay the actual backend workflow execution. It is designed to let you exclude personal away-time (e.g., breaks or interruptions) from the final elapsed time statistics.
+* 🎨 **Interactive Palette & Theme Persistence**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color choice is automatically saved inside the **Workflow JSON** (per-workflow persistence).
+* ⏱️ **Macro-Level Accurate Timing**: Unlike native node timers, this timer measures the **entire duration** of a batch process—from the first image starting to the very last image completing—without resetting between iterations.
+* 🟢 **Dynamic Visual Status Feedback**: The progress counter `[ X / Y ]` changes color based on the workflow state:
+  * ⚪ **Gray (`[ READY ]`)**: Idle, waiting for execution.
+  * 🔵 **Blue**: Workflow running.
+  * 🟢 **Green (`[ Y / Y ]`)**: Workflow completed successfully.
+  * 🟡 **Yellow (`[ INTERRUPT ]`)**: Workflow interrupted by the user.
+  * 🔴 **Pink (`[ ERROR ]`)**: Workflow encountered an error and stopped.
+* ⏸️ **Absolute Timer Independence**: Click the LED digits to pause/resume, or double-click to reset. 
+  > **⚠️ Semantic Note on Interaction:** Pausing **only freezes the UI time ticking**. It does *not* pause the backend workflow, nor does it stop the progress counter from updating. It is designed to let you exclude personal away-time from the final stats.
 * 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*) to automatically update image counts without manual input.
+* 🛡️ **Multi-Workflow Isolation**: Open multiple workflows in the same browser session. The timer states are perfectly isolated per workflow to prevent cross-contamination.
 
 ---
 
 <p align="center">
-  <img src="assets/bitimer.gif" alt="Batch Image Timer Interaction Demo"><br>
-  <sub>*Hover over the counter to Pause/Resume, and click LED digits to reset.*</sub>
+  <img src="assets/bit_timer.gif" alt="Batch Image Timer Interaction Demo"><br>
+  <sub>*Click LED digits to Pause/Resume, double-click to reset, and click swatches to change colors.*</sub>
 </p>
 
 ---
@@ -58,14 +61,31 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ## 🚀 How to Use & Interactive Controls
 
-1. Add **Batch Image Timer** to your batch image workflow graph.
-2. Link your total image count to the `total_images` input.
-3. Click **Queue Prompt** to start processing your image batches.
+1. Add **Batch Image Timer** to your workflow graph.
+2. Link your total image count to the `total_images` input (or leave it at `1` for native tensor batches).
+3. Click **Queue Prompt** to start processing.
 
 ### 🖱️ Canvas Interactions
-* **Pause / Resume**: Hover over the bottom counter area while running. Click `[ PAUSE ]` to freeze the timer, and click `[ RESUME ]` to continue.
-* **Manual Reset**: Click directly on the 7-segment LED time digits at any time to reset the elapsed clock back to `00:00:00`.
-* **Theme Swatches**: Click any color block below the digits to change the LED glow color instantly.
+* **Single Click (Pause/Resume)**: Click anywhere on the 7-segment LED time digits to freeze or continue the timer. (The cursor will change to a pointer).
+* **Double Click (Reset)**: Double-click the LED digits to reset the clock back to `00:00:00`. 
+  * If the workflow is currently running, the timer will restart from zero immediately.
+  * If the workflow is idle, the clock will remain at `00:00:00`.
+* **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
+
+---
+
+## 🚀 How to Use & Interactive Controls
+
+1. Add **Batch Image Timer** to your workflow graph.
+2. Link your total image count to the `total_images` input (or leave it at `1` for native tensor batches).
+3. Click **Queue Prompt** to start processing.
+
+### 🖱️ Canvas Interactions
+* **Single Click (Pause/Resume)**: Click anywhere on the 7-segment LED time digits to freeze or continue the timer. (The cursor will change to a pointer).
+* **Double Click (Reset)**: Double-click the LED digits to reset the clock back to `00:00:00`. 
+  * If the workflow is currently running, the timer will restart from zero immediately.
+  * If the workflow is idle, the clock will remain at `00:00:00`.
+* **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
 
 ---
 
@@ -76,22 +96,27 @@ To ensure accurate time tracking and clean progress stats, **Batch Image Timer**
 ### 1. Native Tensor Batching (`batch_size = N` in KSampler / Latent)
 * **Behavior**: When you set `batch_size = N` in a Latent node, ComfyUI processes all $N$ images in parallel within a **single Prompt execution cycle**.
 * **Setting Rule**: Keep `total_images = 1` (default).
-* **Explanation**: Since ComfyUI treats this as one monolithic pipeline run, the timer tracks the total execution time for the entire tensor batch as 1 unit of work.
+* **Explanation**: The timer tracks the total execution time for the entire tensor batch as 1 unit of work. The counter will display `[ 1 / 1 ]` and turn green upon completion.
 
-### 2. Sequential / Iterative Batching (e.g., Sequential Image Loaders, Iterative Loops)
-* **Behavior**: Workflows that process images iteratively (one-by-one or item-by-item over multiple execution cycles).
+### 2. Sequential / Iterative Batching (e.g., Sequential Image Loaders)
+* **Behavior**: Workflows that process images iteratively (one-by-one over multiple independent Prompt execution cycles).
 * **Setting Rule**: Set `total_images = N` (or connect it directly from your batch loader node).
-* **Explanation**: The timer will track real-time progress (`[ Current / Total ]`) and accurately calculate average per-image processing speed across all loop iterations.
+* **Explanation**: The timer will aggregate the total time across all iterations. The counter will update from `[ 1 / N ]` to `[ N / N ]`, tracking progress without resetting the clock between images.
 
 ---
 
 ## 📋 Changelog
 
+### v0.2.0 (Major Architecture Refactor)
+* **Complete Codebase Rewrite**: Refactored into a modular ES Modules architecture.
+* **Batch Tracking Logic**: Fixed counting/resetting issues with Sequential Loaders. Added robust termination fallbacks for interrupted queues.
+* **UI/UX Overhaul**: Redesigned node layout, fixed window resizing conflicts, and introduced dynamic color feedback for statuses (Ready/Running/Complete/Error/Interrupt).
+* **State Isolation**: Timer interactions (Pause/Reset) are now fully decoupled from the progress counter. Added multi-workflow isolation.
+
 ### v0.1.1
-* Added interactive hover-to-pause (`[ PAUSE ]` / `[ RESUME ]`) functionality.
-* Fixed multi-batch time jumping / rebound bugs by decoupling frontend ticks from backend absolute timestamps.
+* Added interactive hover-to-pause functionality.
+* Fixed multi-batch time jumping / rebound bugs.
 * Implemented workflow-scoped theme color persistence.
-* Standardized font sizing and color isolation for progress counters (`x / y`).
 
 ### v0.1.0
 * Initial release focused on batch image workflow timing.
