@@ -74,21 +74,6 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ---
 
-## 🚀 How to Use & Interactive Controls
-
-1. Add **Batch Image Timer** to your workflow graph.
-2. Link your total image count to the `total_images` input (or leave it at `1` for native tensor batches).
-3. Click **Queue Prompt** to start processing.
-
-### 🖱️ Canvas Interactions
-* **Single Click (Pause/Resume)**: Click anywhere on the 7-segment LED time digits to freeze or continue the timer. (The cursor will change to a pointer).
-* **Double Click (Reset)**: Double-click the LED digits to reset the clock back to `00:00:00`. 
-  * If the workflow is currently running, the timer will restart from zero immediately.
-  * If the workflow is idle, the clock will remain at `00:00:00`.
-* **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
-
----
-
 ## 💡 How It Works & `total_images` Principles
 
 To ensure accurate time tracking and clean progress stats, **Batch Image Timer** distinguishes between ComfyUI's native tensor batching and sequential image-by-image processing loops:
