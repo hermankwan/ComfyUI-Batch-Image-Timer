@@ -1,5 +1,10 @@
 # ⏱️ ComfyUI Batch Image Timer
-**Version: v0.2.0**
+**Version: v0.2.1**
+
+<p align="center">
+  <img src="assets/bit_timer.gif" alt="Batch Image Timer Interaction Demo"><br>
+  <sub>*Click LED digits to Pause/Resume, double-click to reset, and click swatches to change colors.*</sub>
+</p>
 
 A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track the total execution duration across sequential loops and bulk image generation pipelines.
 
@@ -20,19 +25,13 @@ After installation, you can find this node by right-clicking on the canvas, navi
   * ⚪ **Cool Gray (`[ READY ]`)**: Idle, waiting for execution.
   * 🔵 **Blue**: Workflow running.
   * 🟢 **Green (`[ Y / Y ]`)**: Workflow completed successfully.
-  * 🟡 **Yellow (`[ INTERRUPT ]`)**: Workflow interrupted by the user.
+  * 🟡 **Yellow (`[ INTERRUPT ]`)**: Workflow interrupted by the user or stopped by the safety fallback.
   * 🔴 **Pink (`[ ERROR ]`)**: Workflow encountered an error and stopped.
 * ⏸️ **Absolute Timer Independence**: Click the LED digits to pause/resume, or double-click to reset. 
   > **⚠️ Semantic Note on Interaction:** Pausing **only freezes the UI time ticking**. It does *not* pause the backend workflow, nor does it stop the progress counter from updating. It is designed to let you exclude personal away-time from the final stats.
 * 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*) to automatically update image counts without manual input.
 * 🛡️ **Multi-Workflow Isolation**: Open multiple workflows in the same browser session. The timer states are perfectly isolated per workflow to prevent cross-contamination.
-
----
-
-<p align="center">
-  <img src="assets/bit_timer.gif" alt="Batch Image Timer Interaction Demo"><br>
-  <sub>*Click LED digits to Pause/Resume, double-click to reset, and click swatches to change colors.*</sub>
-</p>
+* ⏳ **Safety Deadlock Fallback (10-Minute Timeout)**: A built-in safety net to prevent the timer from running forever if a third-party custom node (e.g., Sequential Loader) enters a deadlock state. See details below.
 
 ---
 
@@ -74,6 +73,21 @@ After installation, you can find this node by right-clicking on the canvas, navi
 
 ---
 
+## 🚀 How to Use & Interactive Controls
+
+1. Add **Batch Image Timer** to your workflow graph.
+2. Link your total image count to the `total_images` input (or leave it at `1` for native tensor batches).
+3. Click **Queue Prompt** to start processing.
+
+### 🖱️ Canvas Interactions
+* **Single Click (Pause/Resume)**: Click anywhere on the 7-segment LED time digits to freeze or continue the timer. (The cursor will change to a pointer).
+* **Double Click (Reset)**: Double-click the LED digits to reset the clock back to `00:00:00`. 
+  * If the workflow is currently running, the timer will restart from zero immediately.
+  * If the workflow is idle, the clock will remain at `00:00:00`.
+* **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
+
+---
+
 ## 💡 How It Works & `total_images` Principles
 
 To ensure accurate time tracking and clean progress stats, **Batch Image Timer** distinguishes between ComfyUI's native tensor batching and sequential image-by-image processing loops:
@@ -90,7 +104,29 @@ To ensure accurate time tracking and clean progress stats, **Batch Image Timer**
 
 ---
 
+## 🛡️ Safety Deadlock Fallback (10-Minute Timeout)
+
+ComfyUI's custom node ecosystem sometimes experiences unexpected deadlocks. For example, third-party batch loaders (like *Sequential Image Loader*) may occasionally stop sending new prompts due to internal state bugs, even though they still visually appear to be running. In such rare cases, the backend stops processing, but the frontend timer might continue ticking indefinitely because it receives no "finish" signal.
+
+To guarantee that the timer will **never run forever**, we've implemented a **10-Minute Deadlock Fallback**:
+
+- If the timer is running and **no progress heartbeat** has been received for **10 minutes**, the node will query ComfyUI's backend (`/prompt` API) to check if any node is truly executing (`exec_info.executing`).
+- If the backend confirms it is completely idle (`executing == null`), the timer will automatically stop and display `[ INTERRUPT ]` in yellow.
+- If a very long task (e.g., a massive upscale) is genuinely running, the backend will report `executing != null`, and the timer will **not** be falsely stopped.
+
+> **💡 Why 10 minutes?**  
+> Most image generation, upscaling, and img2img tasks complete within 5 minutes. 10 minutes provides a generous safety margin to avoid falsely killing genuine tasks while still recovering from a deadlock within a reasonable timeframe.
+
+> **⏩ Don't want to wait 10 minutes?**  
+> If you notice the workflow has clearly stopped but the timer is still counting, simply **double-click the LED digits**. This instantly resets the timer manually and clears the ghost state.
+
+---
+
 ## 📋 Changelog
+
+### v0.2.1
+* **Added 10-Minute Safety Deadlock Fallback**: Prevents the timer from running infinitely when third-party nodes (e.g., Sequential Loaders) enter a ghost/deadlock state. Queries backend `executing` status before stopping.
+* **Improved Status Handling**: `[ INTERRUPT ]` now properly covers both user-initiated interruptions and fallback-triggered stops.
 
 ### v0.2.0 (Major Architecture Refactor)
 * **Complete Codebase Rewrite**: Refactored into a modular ES Modules architecture.

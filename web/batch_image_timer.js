@@ -10,10 +10,33 @@ let activeNodeId = null;
 let isMacroRunning = false;
 let lastCompletionTime = 0;
 let queueEmptyTimeout = null;
+let lastHeartbeatTime = Date.now();
+
+const DEADLOCK_TIMEOUT_MS = 10 * 60 * 1000;
 
 setInterval(() => {
     if (timer.isRunning && !timer.isPaused) {
         app.graph?.setDirtyCanvas(true, true);
+    }
+
+    if (isMacroRunning) {
+        const silence = Date.now() - lastHeartbeatTime;
+        if (silence > DEADLOCK_TIMEOUT_MS) {
+            lastHeartbeatTime = Date.now();
+            fetch("/prompt")
+                .then(res => res.json())
+                .then(data => {
+                    if (data?.exec_info?.executing == null) {
+                        isMacroRunning = false;
+                        lastCompletionTime = Date.now();
+                        timer.stop();
+                        progress.status = "INTERRUPT";
+                        fetch("/batch_timer/reset", { method: "POST" }).catch(() => {});
+                        app.graph?.setDirtyCanvas(true, true);
+                    }
+                })
+                .catch(() => {});
+        }
     }
 }, 100);
 
@@ -24,6 +47,8 @@ app.registerExtension({
         api.addEventListener("batch_timer_update", (event) => {
             const d = event.detail || {};
             if (d.node_id) activeNodeId = String(d.node_id);
+
+            lastHeartbeatTime = Date.now();
 
             if (queueEmptyTimeout) {
                 clearTimeout(queueEmptyTimeout);
@@ -57,23 +82,43 @@ app.registerExtension({
 
         api.addEventListener("status", (event) => {
             const queueRemaining = event.detail?.status?.exec_info?.queue_remaining;
+            
             if (queueRemaining === 0 && isMacroRunning) {
                 if (queueEmptyTimeout) clearTimeout(queueEmptyTimeout);
                 queueEmptyTimeout = setTimeout(() => {
-                    if (isMacroRunning) {
-                        isMacroRunning = false;
-                        lastCompletionTime = Date.now();
-                        timer.stop();
-                        if (progress.current < progress.total) {
-                            progress.status = "INTERRUPT";
-                        } else {
-                            progress.markCompleted();
-                        }
-                        fetch("/batch_timer/reset", { method: "POST" }).catch(() => {});
-                        app.graph?.setDirtyCanvas(true, true);
-                    }
-                    queueEmptyTimeout = null;
-                }, 1000);
+                    fetch("/prompt")
+                        .then(res => res.json())
+                        .then(data => {
+                            const isExecuting = data?.exec_info?.executing != null;
+                            if (isExecuting) return;
+                            
+                            if (isMacroRunning) {
+                                isMacroRunning = false;
+                                lastCompletionTime = Date.now();
+                                timer.stop();
+                                if (progress.current < progress.total) {
+                                    progress.status = "INTERRUPT";
+                                } else {
+                                    progress.markCompleted();
+                                }
+                                fetch("/batch_timer/reset", { method: "POST" }).catch(() => {});
+                                app.graph?.setDirtyCanvas(true, true);
+                            }
+                        })
+                        .catch(() => {
+                            if (isMacroRunning) {
+                                isMacroRunning = false;
+                                lastCompletionTime = Date.now();
+                                timer.stop();
+                                progress.status = "INTERRUPT";
+                                fetch("/batch_timer/reset", { method: "POST" }).catch(() => {});
+                                app.graph?.setDirtyCanvas(true, true);
+                            }
+                        })
+                        .finally(() => {
+                            queueEmptyTimeout = null;
+                        });
+                }, 1500);
             }
         });
 
