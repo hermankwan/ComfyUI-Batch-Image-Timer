@@ -8,6 +8,8 @@
 
 A specialized custom node for ComfyUI designed to focus on **batch image processing workflows**, providing a **real-time 7-segment LED display timer** to accurately track the total execution duration across sequential loops and bulk image generation pipelines.
 
+> 💡 **Looking to time other workflows (Video, Audio, Training)?** Check out my universal counterpart: [ComfyUI Universal Timer](https://github.com/hermankwan/ComfyUI-Universal-Timer).
+
 ---
 
 ## 📌 Where to Find It in ComfyUI
