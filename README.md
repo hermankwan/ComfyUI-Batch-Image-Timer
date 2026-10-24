@@ -17,7 +17,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 * 🎨 **Interactive Palette & Theme Persistence**: Click-to-change display color scheme (White, Blue, Green, Yellow, Pink). Your color choice is automatically saved inside the **Workflow JSON** (per-workflow persistence).
 * ⏱️ **Macro-Level Accurate Timing**: Unlike native node timers, this timer measures the **entire duration** of a batch process—from the first image starting to the very last image completing—without resetting between iterations.
 * 🟢 **Dynamic Visual Status Feedback**: The progress counter `[ X / Y ]` changes color based on the workflow state:
-  * ⚪ **Gray (`[ READY ]`)**: Idle, waiting for execution.
+  * ⚪ **Cool Gray (`[ READY ]`)**: Idle, waiting for execution.
   * 🔵 **Blue**: Workflow running.
   * 🟢 **Green (`[ Y / Y ]`)**: Workflow completed successfully.
   * 🟡 **Yellow (`[ INTERRUPT ]`)**: Workflow interrupted by the user.
