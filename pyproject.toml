@@ -1,6 +1,6 @@
 [project]
 name = "comfyui-batch-image-timer"
-description = "A real-time 7-segment LED timer node for ComfyUI batch generation tracking."
+description = "A specialized 7-segment LED timer for tracking the total execution time of batch image processing workflows."
 version = "0.2.1"
 license = {file = "LICENSE"}
 dependencies = ["aiohttp"]
