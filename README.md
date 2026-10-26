@@ -112,6 +112,17 @@ To guarantee that the timer will **never run forever**, we've implemented a **10
 
 ---
 
+## ❓ FAQ & Known Limitations
+
+**Q: I added multiple Timer nodes to one workflow, but the progress counter is jumping or resetting. Why?**
+> **A:** The Timer engine is designed to track the **entire macro-duration** of a workflow using a global single-state per session. Because of this, all Timer nodes in the same canvas are synchronized and share the same macro-progress.
+> 
+> If you place multiple Timer nodes but set different `total_images` values, the backend will continuously detect a "changed total" and reset its counter, causing chaotic jumping.
+> 
+> 👉 **Best Practice**: If you need to use multiple timers for benchmarking different stages (e.g., Loader vs. Upscaler), **please ensure all connected Timer nodes have the exact same `total_images` value**. For normal usage, we recommend adding only **one** Timer node to your workflow.
+
+---
+
 ## 📋 Changelog
 
 ### v0.2.2
