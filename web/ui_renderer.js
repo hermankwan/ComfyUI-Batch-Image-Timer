@@ -1,7 +1,7 @@
 const COLOR_PALETTE = ["#FFFFFF", "#00BFFF", "#00FF88", "#FFCC00", "#FF007F"];
 const INACTIVE_COLOR_MAP = {
-    "#FFFFFF": "#2A2A2A", "#00BFFF": "#002B36", "#00FF88": "#003311",
-    "#FFCC00": "#332600", "#FF007F": "#33001A"
+    "#FFFFFF": "#1A1A1A", "#00BFFF": "#001A22", "#00FF88": "#001F11",
+    "#FFCC00": "#1F1700", "#FF007F": "#1F0010"
 };
 const SEGMENT_MAP = {
     '0': [1,1,1,1,1,1,0], '1': [0,1,1,0,0,0,0], '2': [1,1,0,1,1,0,1],
@@ -57,7 +57,7 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
     const totalDisplayWidth = (6 * digitWidth) + (7 * digitGap) + (2 * colonWidth);
     let startX = (nodeW - totalDisplayWidth) / 2;
 
-    const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#2A2A2A";
+    const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#1A1A1A";
     
     node._hitDigit = { x: startX - 4, y: digitStartY - 4, w: totalDisplayWidth + 8, h: digitHeight + 8 };
 
@@ -66,9 +66,16 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
         if (char === ':') {
             const dotSize = Math.max(3, colonWidth * 0.35);
             const cx = startX + colonWidth / 2 - dotSize / 2;
+            
             ctx.fillStyle = activeColor;
+            ctx.globalAlpha = 0.2;
+            ctx.fillRect(cx - 0.5, digitStartY + digitHeight * 0.3 - dotSize / 2 - 0.5, dotSize + 1, dotSize + 1);
+            ctx.fillRect(cx - 0.5, digitStartY + digitHeight * 0.7 - dotSize / 2 - 0.5, dotSize + 1, dotSize + 1);
+            
+            ctx.globalAlpha = 1.0;
             ctx.fillRect(cx, digitStartY + digitHeight * 0.3 - dotSize / 2, dotSize, dotSize);
             ctx.fillRect(cx, digitStartY + digitHeight * 0.7 - dotSize / 2, dotSize, dotSize);
+            
             startX += colonWidth + digitGap;
         } else {
             drawDigit(ctx, startX, digitStartY, digitWidth, digitHeight, char, activeColor, inactiveColor);
@@ -109,19 +116,17 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
     textX += bracketW;
 
     let textColor = "#00B5F1"; 
-    
-    if (displayText === "READY") {
-        textColor = "#B0BEC5";
-    } else if (displayText === "INTERRUPT") {
-        textColor = "#DEB200";
-    } else if (displayText === "ERROR") {
-        textColor = "#E60373";
-    } else if (isCompleted) {
-        textColor = "#00DF77";
-    }
+    if (displayText === "READY") textColor = "#B0BEC5";
+    else if (displayText === "INTERRUPT") textColor = "#DEB200";
+    else if (displayText === "ERROR") textColor = "#E60373";
+    else if (isCompleted) textColor = "#00DF77";
 
     ctx.fillStyle = textColor;
+    ctx.globalAlpha = 0.2;
     ctx.fillText(` ${displayText} `, textX, statusY);
+    ctx.globalAlpha = 1.0;
+    ctx.fillText(` ${displayText} `, textX, statusY);
+    
     textX += innerW;
 
     ctx.fillStyle = "#666666";
@@ -135,17 +140,28 @@ function drawDigit(ctx, x, y, width, height, char, activeColor, inactiveColor) {
     const t = Math.max(2, width * 0.14);
     const gap = width * 0.08;
     const hH = height / 2;
+    
     const segs = [
-        () => ctx.fillRect(x + t + gap, y, width - 2 * t - 2 * gap, t),
-        () => ctx.fillRect(x + width - t, y + t + gap, t, hH - t - 2 * gap),
-        () => ctx.fillRect(x + width - t, y + hH + gap, t, hH - t - 2 * gap),
-        () => ctx.fillRect(x + t + gap, y + height - t, width - 2 * t - 2 * gap, t),
-        () => ctx.fillRect(x, y + hH + gap, t, hH - t - 2 * gap),
-        () => ctx.fillRect(x, y + t + gap, t, hH - t - 2 * gap),
-        () => ctx.fillRect(x + t + gap, y + hH - t / 2, width - 2 * t - 2 * gap, t)
+        { x: x + t + gap, y: y, w: width - 2 * t - 2 * gap, h: t },
+        { x: x + width - t, y: y + t + gap, w: t, h: hH - t - 2 * gap },
+        { x: x + width - t, y: y + hH + gap, w: t, h: hH - t - 2 * gap },
+        { x: x + t + gap, y: y + height - t, w: width - 2 * t - 2 * gap, h: t },
+        { x: x, y: y + hH + gap, w: t, h: hH - t - 2 * gap },
+        { x: x, y: y + t + gap, w: t, h: hH - t - 2 * gap },
+        { x: x + t + gap, y: y + hH - t / 2, w: width - 2 * t - 2 * gap, h: t }
     ];
+
     for (let i = 0; i < 7; i++) {
-        ctx.fillStyle = segments[i] ? activeColor : inactiveColor;
-        segs[i]();
+        if (segments[i]) {
+            ctx.fillStyle = activeColor;
+            ctx.globalAlpha = 0.15;
+            ctx.fillRect(segs[i].x - 1, segs[i].y - 1, segs[i].w + 2, segs[i].h + 2);
+            
+            ctx.globalAlpha = 1.0;
+            ctx.fillRect(segs[i].x, segs[i].y, segs[i].w, segs[i].h);
+        } else {
+            ctx.fillStyle = inactiveColor;
+            ctx.fillRect(segs[i].x, segs[i].y, segs[i].w, segs[i].h);
+        }
     }
 }

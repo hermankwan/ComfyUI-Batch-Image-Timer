@@ -175,29 +175,19 @@ app.registerExtension({
         }
 
         node.onDrawBackground = function (ctx) {
-            const isThisNodeActive = (activeNodeId === String(this.id));
-            
             let timerMs = timer.getElapsedMs();
             let displayText = progress.getDisplayText();
             let isCompleted = progress.isCompleted;
 
-            if (!isThisNodeActive) {
-                if (!timer.isRunning && progress.isCompleted) {
-                    if (activeNodeId !== String(this.id)) {
-                        timerMs = 0;
-                        displayText = "READY";
-                        isCompleted = false;
-                    }
-                } else {
-                    timerMs = 0;
-                    displayText = "READY";
-                    isCompleted = false;
-                }
+            if (!timer.isRunning && !isCompleted && activeNodeId !== String(this.id)) {
+                timerMs = 0;
+                displayText = "READY";
             }
 
             const activeColor = this.properties.activeColor;
             renderTimerUI(ctx, this, timerMs, displayText, activeColor, isCompleted);
         };
+
 
         node.onMouseDown = function (e, pos) {
             const isThisNodeActive = (activeNodeId === String(this.id)) || !timer.isRunning;

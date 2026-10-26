@@ -1,5 +1,5 @@
 # ⏱️ ComfyUI Batch Image Timer
-**Version: v0.2.1**
+**Version: v0.2.2**
 
 <p align="center">
   <img src="assets/bit_timer.gif" alt="Batch Image Timer Interaction Demo"><br>
@@ -34,6 +34,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
 * 🔗 **Auto Batch Count Sync**: Connect `total_images` directly to batch loaders (e.g., *Sequential Image Loader*, *ComfyUI-BatchFolderTools*) to automatically update image counts without manual input.
 * 🛡️ **Multi-Workflow Isolation**: Open multiple workflows in the same browser session. The timer states are perfectly isolated per workflow to prevent cross-contamination.
 * ⏳ **Safety Deadlock Fallback (10-Minute Timeout)**: A built-in safety net to prevent the timer from running forever if a third-party custom node (e.g., Sequential Loader) enters a deadlock state. See details below.
+* 💡 **Visual Enhancements & Multi-Node Benchmarking**: A neon glow effect makes the LED pop, and you can place multiple timers to benchmark different stages of your image pipeline simultaneously.
 
 ---
 
@@ -73,20 +74,7 @@ After installation, you can find this node by right-clicking on the canvas, navi
   * If the workflow is idle, the clock will remain at `00:00:00`.
 * **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
 
----
-
-## 🚀 How to Use & Interactive Controls
-
-1. Add **Batch Image Timer** to your workflow graph.
-2. Link your total image count to the `total_images` input (or leave it at `1` for native tensor batches).
-3. Click **Queue Prompt** to start processing.
-
-### 🖱️ Canvas Interactions
-* **Single Click (Pause/Resume)**: Click anywhere on the 7-segment LED time digits to freeze or continue the timer. (The cursor will change to a pointer).
-* **Double Click (Reset)**: Double-click the LED digits to reset the clock back to `00:00:00`. 
-  * If the workflow is currently running, the timer will restart from zero immediately.
-  * If the workflow is idle, the clock will remain at `00:00:00`.
-* **Theme Swatches**: Click any of the 5 color blocks below the digits to change the LED glow color instantly.
+> 💡 **Pro Tip (Multi-Node Sync)**: You can add multiple Timer nodes to the same canvas. When the workflow runs, all timers will start and stop synchronously, displaying the exact same unified macro-time. This is perfect for benchmarking different stages of your pipeline!
 
 ---
 
@@ -125,6 +113,11 @@ To guarantee that the timer will **never run forever**, we've implemented a **10
 ---
 
 ## 📋 Changelog
+
+### v0.2.2
+* **Added Multi-Node Benchmarking**: Place multiple timers in one image pipeline (e.g., before the loader and after the upscaler) to observe the exact duration of each stage. They will sync automatically.
+* **Added Neon Glow Effect**: The 7-segment LED digits now have a subtle, theme-matched glow, making the batch monitoring visually clearer.
+* **Fixed Node Resizing Conflict**: Improved UI interaction so node corners can be easily dragged to resize without cursor interference.
 
 ### v0.2.1
 * **Added 10-Minute Safety Deadlock Fallback**: Prevents the timer from running infinitely when third-party nodes (e.g., Sequential Loaders) enter a ghost/deadlock state. Queries backend `executing` status before stopping.
