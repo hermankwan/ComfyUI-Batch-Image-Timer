@@ -79,10 +79,10 @@ The node UI has **four zones** — each responds only within its own area:
 
 | Zone | Interaction |
 |---|---|
-| **1. Mode tabs** (`ETA` / `COMPUTE` / `TOTAL`) | Click to switch mode. Active tab is highlighted blue. |
+| **1. Mode tabs** (`ETA`&nbsp;/&nbsp;`COMPUTE`&nbsp;/&nbsp;`TOTAL`) | Click to switch mode. Active tab is highlighted blue. |
 | **2. LED timer digits** | **COMPUTE**: single-click = Pause/Resume, double-click = reset (continues if running, stays at `00:00:00` if idle).<br>**TOTAL**: single-click = brief flash (only while running); double-click = reset.<br>**ETA**: single/double-click = brief flash (only while running, no pause/reset). |
 | **3. Color swatches** (5 blocks) | Click to change LED color. Saved with the workflow. |
-| **4. Progress counter `[ X / Y ]`** | Display only — no interaction. |
+| **4. Progress counter** `[&nbsp;X&nbsp;/&nbsp;Y&nbsp;]` | Display only — no interaction. |
 
 > 💡 **Use only one Batch Image Timer per workflow.** With multiple timers, only the first-executed node tracks the active run; the others remain display-isolated.
 
