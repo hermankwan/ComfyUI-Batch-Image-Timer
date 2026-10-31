@@ -1,3 +1,12 @@
+/**
+ * ComfyUI-Batch-Image-Timer
+ * A specialized 7-segment LED timer for tracking the total execution time of batch image processing workflows.
+ * 
+ * @version 0.2.3
+ * @copyright Copyright (c) 2026 Herman Kwan
+ * @license MIT
+ */
+
 const COLOR_PALETTE = ["#FFFFFF", "#00BFFF", "#00FF88", "#FFCC00", "#FF007F"];
 const INACTIVE_COLOR_MAP = {
     "#FFFFFF": "#1A1A1A", "#00BFFF": "#001A22", "#00FF88": "#001F11",
@@ -10,7 +19,7 @@ const SEGMENT_MAP = {
     '9': [1,1,1,1,0,1,1]
 };
 
-export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCompleted = false) {
+export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCompleted, displayMode, progressStatus, flashTime = 0) {
     const nodeW = node.size[0];
     const nodeH = node.size[1];
     
@@ -29,7 +38,9 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
 
     const margin = 10;
     const rectW = nodeW - margin * 2;
-    const rectH = Math.max(80, nodeH - headerOffset - margin);
+    let rawH = nodeH - headerOffset - margin;
+    if (isNaN(rawH)) rawH = 100;
+    const rectH = Math.max(80, rawH);
     
     ctx.save();
     ctx.fillStyle = "#000000";
@@ -39,17 +50,20 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
     ctx.strokeRect(margin, headerOffset, rectW, rectH);
 
     const scale = Math.max(0.5, Math.min(rectW / 240, rectH / 90));
-    const centerY = headerOffset + rectH * 0.42;
-    
-    const totalSec = Math.floor(Math.max(0, timerMs) / 1000);
-    const timeStr = `${String(Math.floor(totalSec/3600)).padStart(2,'0')}:${String(Math.floor((totalSec%3600)/60)).padStart(2,'0')}:${String(totalSec%60).padStart(2,'0')}`;
+    const centerY = headerOffset + rectH * 0.46;
 
-    ctx.fillStyle = "#666666";
-    ctx.font = `bold ${Math.max(9, Math.round(10 * scale))}px monospace`;
-    ctx.textAlign = "center";
+    let timeStr;
+    if (timerMs === (99 * 3600 + 99 * 60 + 99) * 1000) {
+        timeStr = "99:99:99";
+    } else {
+        const totalSec = Math.floor(Math.max(0, timerMs) / 1000);
+        timeStr = `${String(Math.floor(totalSec/3600)).padStart(2,'0')}:${String(Math.floor((totalSec%3600)/60)).padStart(2,'0')}:${String(totalSec%60).padStart(2,'0')}`;
+    }
+
     const digitHeight = 26 * scale;
     const digitStartY = centerY - (digitHeight / 2);
-    ctx.fillText("TOTAL ELAPSED", nodeW / 2, digitStartY - 8 * scale);
+
+    drawModeTabs(ctx, node, nodeW, digitStartY, scale, displayMode);
 
     const digitWidth = 14 * scale;
     const digitGap = 5 * scale;
@@ -58,8 +72,9 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
     let startX = (nodeW - totalDisplayWidth) / 2;
 
     const inactiveColor = INACTIVE_COLOR_MAP[activeColor] || "#1A1A1A";
-    
     node._hitDigit = { x: startX - 4, y: digitStartY - 4, w: totalDisplayWidth + 8, h: digitHeight + 8 };
+
+    const isFlashing = (Date.now() - flashTime < 150);
 
     for (let i = 0; i < timeStr.length; i++) {
         const char = timeStr[i];
@@ -68,26 +83,28 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
             const cx = startX + colonWidth / 2 - dotSize / 2;
             
             ctx.fillStyle = activeColor;
-            ctx.globalAlpha = 0.2;
+            ctx.globalAlpha = isFlashing ? 0.05 : 0.3;
             ctx.fillRect(cx - 0.5, digitStartY + digitHeight * 0.3 - dotSize / 2 - 0.5, dotSize + 1, dotSize + 1);
             ctx.fillRect(cx - 0.5, digitStartY + digitHeight * 0.7 - dotSize / 2 - 0.5, dotSize + 1, dotSize + 1);
             
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = isFlashing ? 0.2 : 1.0;
             ctx.fillRect(cx, digitStartY + digitHeight * 0.3 - dotSize / 2, dotSize, dotSize);
             ctx.fillRect(cx, digitStartY + digitHeight * 0.7 - dotSize / 2, dotSize, dotSize);
             
             startX += colonWidth + digitGap;
         } else {
-            drawDigit(ctx, startX, digitStartY, digitWidth, digitHeight, char, activeColor, inactiveColor);
+            drawDigit(ctx, startX, digitStartY, digitWidth, digitHeight, char, activeColor, inactiveColor, isFlashing);
             startX += digitWidth + digitGap;
         }
     }
+
+    ctx.globalAlpha = 1.0;
 
     const swatchSize = Math.max(5, Math.round(6 * scale));
     const swatchGap = 6 * scale;
     const totalSwatchesW = COLOR_PALETTE.length * swatchSize + (COLOR_PALETTE.length - 1) * swatchGap;
     let swatchStartX = (nodeW - totalSwatchesW) / 2;
-    const swatchY = digitStartY + digitHeight + 6 * scale;
+    const swatchY = digitStartY + digitHeight + 10 * scale; 
 
     node._hitSwatches = [];
     COLOR_PALETTE.forEach(color => {
@@ -102,8 +119,64 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
         swatchStartX += swatchSize + swatchGap;
     });
 
-    const statusFontSize = Math.max(10, Math.round(11 * scale));
     const statusY = swatchY + swatchSize + 14 * scale;
+    drawCounter(ctx, node, nodeW, statusY, scale, displayText, progressStatus, isCompleted);
+
+    ctx.restore();
+}
+
+function drawModeTabs(ctx, node, nodeW, digitStartY, scale, displayMode) {
+    const modes = ["ETA", "COMPUTE", "TOTAL"];
+    const separators = [" | ", " | "];
+    const textToMeasure = [];
+    
+    modes.forEach((mode, i) => {
+        textToMeasure.push(mode);
+        if (i < modes.length - 1) textToMeasure.push(separators[i]);
+    });
+
+    const titleFontSize = Math.max(9, Math.round(10 * scale));
+    ctx.font = `bold ${titleFontSize}px monospace`;
+    ctx.textAlign = "center";
+
+    const widths = textToMeasure.map(t => ctx.measureText(t).width);
+    const totalTitleWidth = widths.reduce((a, b) => a + b, 0);
+    
+    let titleX = (nodeW - totalTitleWidth) / 2;
+    const titleY = digitStartY - 14 * scale;
+
+    node._hitTabs = [];
+
+    let currentX = titleX;
+    for (let i = 0; i < modes.length; i++) {
+        const mode = modes[i];
+        const w = ctx.measureText(mode).width;
+
+        ctx.fillStyle = (displayMode === mode) ? "#00BFFF" : "#555555";
+        ctx.fillText(mode, currentX + w / 2, titleY);
+        
+        node._hitTabs.push({
+            x: currentX,
+            y: titleY - titleFontSize,
+            w: w,
+            h: titleFontSize + 4,
+            mode: mode
+        });
+
+        currentX += w;
+
+        if (i < modes.length - 1) {
+            ctx.fillStyle = "#333333"; 
+            const sep = separators[i];
+            const sepW = ctx.measureText(sep).width;
+            ctx.fillText(sep, currentX + sepW / 2, titleY);
+            currentX += sepW;
+        }
+    }
+}
+
+function drawCounter(ctx, node, nodeW, statusY, scale, displayText, progressStatus, isCompleted) {
+    const statusFontSize = Math.max(10, Math.round(11 * scale));
     ctx.font = `bold ${statusFontSize}px monospace`;
     
     const bracketW = ctx.measureText("[").width;
@@ -115,11 +188,11 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
     ctx.fillText("[", textX, statusY);
     textX += bracketW;
 
-    let textColor = "#00B5F1"; 
+    let textColor = "#00BFFF"; 
     if (displayText === "READY") textColor = "#B0BEC5";
-    else if (displayText === "INTERRUPT") textColor = "#DEB200";
-    else if (displayText === "ERROR") textColor = "#E60373";
-    else if (isCompleted) textColor = "#00DF77";
+    else if (progressStatus === "INTERRUPT") textColor = "#FFCC00"; 
+    else if (progressStatus === "ERROR") textColor = "#FF3333"; 
+    else if (isCompleted) textColor = "#00FF88"; 
 
     ctx.fillStyle = textColor;
     ctx.globalAlpha = 0.2;
@@ -131,11 +204,9 @@ export function renderTimerUI(ctx, node, timerMs, displayText, activeColor, isCo
 
     ctx.fillStyle = "#666666";
     ctx.fillText("]", textX, statusY);
-
-    ctx.restore();
 }
 
-function drawDigit(ctx, x, y, width, height, char, activeColor, inactiveColor) {
+function drawDigit(ctx, x, y, width, height, char, activeColor, inactiveColor, isFlashing) {
     const segments = SEGMENT_MAP[char] || [0,0,0,0,0,0,0];
     const t = Math.max(2, width * 0.14);
     const gap = width * 0.08;
@@ -154,13 +225,17 @@ function drawDigit(ctx, x, y, width, height, char, activeColor, inactiveColor) {
     for (let i = 0; i < 7; i++) {
         if (segments[i]) {
             ctx.fillStyle = activeColor;
-            ctx.globalAlpha = 0.15;
+            ctx.globalAlpha = isFlashing ? 0.05 : 0.3;
             ctx.fillRect(segs[i].x - 1, segs[i].y - 1, segs[i].w + 2, segs[i].h + 2);
             
-            ctx.globalAlpha = 1.0;
+            ctx.globalAlpha = isFlashing ? 0.2 : 1.0;
             ctx.fillRect(segs[i].x, segs[i].y, segs[i].w, segs[i].h);
         } else {
             ctx.fillStyle = inactiveColor;
+            ctx.globalAlpha = 0.5; 
+            ctx.fillRect(segs[i].x - 1, segs[i].y - 1, segs[i].w + 2, segs[i].h + 2);
+            
+            ctx.globalAlpha = 1.0;
             ctx.fillRect(segs[i].x, segs[i].y, segs[i].w, segs[i].h);
         }
     }
